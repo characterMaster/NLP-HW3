@@ -1,6 +1,6 @@
-Q1：
+## Q1：
 
-### 表 1
+tabel 1
 |            | switchboard-small |               | switchboard |               |
 |------------|------------------:|---------------|------------:|---------------|
 |            | log-prob          | cross-entropy | log-prob    | cross-entropy |
@@ -10,12 +10,12 @@ Q1：
 
 ---
 
-### 表 2
+tabel 2
 | perplexity | switchboard-small | switchboard |
 |------------|------------------:|------------:|
-| **Sample1** | 227.6             | 88.9        |
-| **Sample2** | 315.9             | 122.9       |
-| **Sample3** | 312.7             | 114.5       |
+| **Sample1** | 230.8             | 88.3        |
+| **Sample2** | 316.5             | 123.9       |
+| **Sample3** | 313.0             | 114.5       |
 
 
 When trained on the larger switchboard corpus, the log₂-probabilities
@@ -25,4 +25,4 @@ sparsity and allowing the model to assign higher probabilities to test
 sequences. As a result, the model's predictions are closer to the true
 distribution, leading to lower cross-entropy and perplexity.
 
-Q2:
+## Q2:

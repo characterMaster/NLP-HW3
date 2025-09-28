@@ -119,8 +119,9 @@ def main():
     # bits per token.  (The division happens within the print statement.)
 
     tokens = sum(num_tokens(test_file) for test_file in args.test_files)
-    print(f"Overall cross-entropy:\t{bits / tokens:.5f} bits per token")
-
+    H = bits / tokens
+    print(f"Overall cross-entropy:\t{H:.5f} bits per token")
+    print(f"Perplexity:\t{math.pow(2, H)}")
 
 if __name__ == "__main__":
     main()
