@@ -324,7 +324,12 @@ class BackoffAddLambdaLanguageModel(AddLambdaLanguageModel):
 
     def prob(self, x: Wordtype, y: Wordtype, z: Wordtype) -> float:
         # TODO: Reimplement me so that I do backoff
-        return super().prob(x, y, z)
+        bigram_p = self.event_count[y, z] / self.context_count[y]
+        assert self.event_count[x, y, z] <= self.context_count[x, y]
+        return ((self.event_count[x, y, z] + self.lambda_ * self.vocab_size* bigram_p) /
+                (self.context_count[x, y] + self.lambda_ * self.vocab_size))
+        
+        # return super().prob(x, y, z)
         # Don't forget the difference between the Wordtype z and the
         # 1-element tuple (z,). If you're looking up counts,
         # these will have very different counts!
