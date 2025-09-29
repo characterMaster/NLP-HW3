@@ -15,6 +15,7 @@ import math
 import sys
 from pathlib import Path
 import torch
+import glob
 
 from probs import Wordtype, LanguageModel, read_trigrams  # starter code APIs
 
@@ -69,8 +70,8 @@ def main():
         raise ValueError("Prior must be in (0,1), e.g., 0.7")
 
     # load models
-    lm_gen  = LanguageModel.load(args.gen_model, device=args.device)
-    lm_spam = LanguageModel.load(args.spam_model, device=args.device)
+    lm_gen  = LanguageModel.load(args.model1, device=args.device)
+    lm_spam = LanguageModel.load(args.model2, device=args.device)
 
     # vocab equality sanity check (required by spec)
     try:
@@ -86,14 +87,29 @@ def main():
     log_prior_gen  = math.log(args.prior)
     log_prior_spam = math.log(1.0 - args.prior)
 
+    # gather test files (expand globs, recurse into dirs)
+    test_paths: list[Path] = []
+    for pat in args.test_files:
+        # glob first (PowerShell/Windows may not expand * on its own)
+        matches = glob.glob(str(pat))
+        if not matches:
+            matches = [str(pat)]
+        for m in matches:
+            p = Path(m)
+            if p.is_dir():
+                # collect all regular files under this dir (recursive)
+                test_paths.extend([q for q in p.rglob("*") if q.is_file()])
+            else:
+                test_paths.append(p)
+
     # classify each file
-    gen_name  = str(args.gen_model)
-    spam_name = str(args.spam_model)
+    gen_name  = str(args.model1)
+    spam_name = str(args.model2)
     gen_count = 0
     spam_count = 0
     total = 0
 
-    for f in args.test_files:
+    for f in test_paths:
         lp_gen  = file_log_prob(f, lm_gen)  + log_prior_gen
         lp_spam = file_log_prob(f, lm_spam) + log_prior_spam
 
