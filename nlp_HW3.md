@@ -89,3 +89,34 @@ $$\hat{p}(z|xy)=\frac{1+\lambda V\hat{p}(z|y)}{c(xy)+\lambda V}.$$
 Since it is unknown whether $\hat{p}(z|y)=\hat{p}(z'|y)$, the answer is still not necessarily equal.
 
 (d) When $\lambda$ increases, the ratio of the backed-off version model, (n-1)-gram, will become more weighted. Since model with less context (n gets smaller) could have larger possibilities for words, which introduces more smoothing, resulting in less variance and higher bias. Model tends to underfit the current corpus but to have a more stable result.  
+
+
+## Q6:
+INFO: model=swsmall_add0.1.model  num=10  max_len=20
+01: physically alright elaborate debit same productive ties bite his american darn limited always counting play meetings davis nuggets specialty account
+02: source real fondue christmas we've floors body both suppose ooh southwest row material wild governor michigan stop pack tasted needs
+03: recycling around definitely even below desert boys emergencies perfectly gee girls crust earn variety plano organizations comes round closer grades
+04: write picked minneapolis purpose suits silver delivered animal favor easier cup voice the father's polluting half try instruments during discover
+05: mom's drug none tons handy date you're living blue as buff pass smokers history baking grandma york manufacturing whole target
+06: admit return publicity matter earn pictures built huh_uh individuals watching that's dry lettuce concerns trouble terms expenses physical organizations cholesterol
+07: several meal sister march OOV fifty aids unsweetened then straight fair awareness theme wander birthdays laid based settles she's career
+08: just mervyn's during tests hoi curious meal row courses fancy yogurt play hydrocarbons love call decent fly now depend daughters
+09: battery payments delicious tragic talks battery did pressed cutting cases valley mystery jewelry skim soy cook both house hold it'll
+10: round probably worked bottles harder folks tasted diseases converters incinerator his emergency dissertation uncle illness taste metal atlanta yours stuck
+
+INFO: model=swsmall_add0.01.model  num=10  max_len=20
+01: physically alright elaborate debit same productive ties bite his american darn limited always counting play meetings davis nuggets specialty account
+02: source real fondue christmas we've floors body both suppose ooh southwest row material wild governor michigan stop pack tasted needs
+03: recycling around definitely even below desert boys emergencies perfectly gee girls crust earn variety plano organizations comes round closer grades
+04: write picked minneapolis purpose suits silver delivered animal favor easier cup voice the father's polluting half try instruments during discover
+05: mom's drug none tons handy date you're living boot as buff pass smokers history baking grandma york manufacturing whole target
+06: admit return publicity matter earn pictures built huh_uh individuals watching that's dry lettuce concerns trouble terms expenses physical organizations cholesterol
+07: several meal sister march OOV fifty aids unsweetened then straight fair awareness theme wander birthdays laid based settles she's career
+08: just mervyn's during tests hoi curious meal row courses fancy yogurt play hydrocarbons love call decent fly now depend daughters
+09: battery payments delicious tragic talks battery did pressed cutting cases valley mystery jewelry skim soy cook both house hold it'll
+10: round probably worked bottles harder folks tasted diseases converters incinerator his emergency dissertation uncle illness taste metal atlanta yours stuck 
+
+Both models produce locally fluent, topic-coherent fragments (food, health, payments, places) but remain list-like with weak sentence structure—classic n-gram behavior without BOS/EOS, so sequences end by truncation rather than clear punctuation. Outputs for lambda=0.1 and lambda=0.01 are nearly indistinguishable, differing only in rare lexical choices (e.g., “blue”→“boot”), which suggests smoothing strength barely shifts high-frequency trigram preferences while slightly nudging long-tail words. Occasional OOV tokens and abrupt endings further reflect vocabulary limits.
+
+
+
