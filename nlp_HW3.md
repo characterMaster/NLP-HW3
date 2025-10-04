@@ -50,6 +50,26 @@ best lambda on combined  -> 0.005 (9.068397 bits/token)
 Sweeping lambda in {5, 0.5, 0.05, 0.005, 0.0005}, the dev cross-entropy is minimized at lambda=0.005 (combined 9.068 bits/token). Larger lambda over-smooths toward uniform, while very small lambda under-smooths and overfits, so a mid-range lambda performs best.
 
 (f)
+![length_loss](image.png)
+![length_error](image-1.png)
+With λ* fixed, combined cross-entropy is fairly flat around 10–11 bits/token from 0–5k, then drops to ~8.9 bits/token for 7–8k, suggesting longer documents are easier because they provide more evidence. The 0/1 error decreases from ~25% (0–999) to ~16% (1k–1.9k), but the 100% spikes in the 2–3k and 4–5k bins are artifacts of extremely tiny bin counts (likely 1 doc), so they aren’t statistically meaningful. Overall, performance improves with length when bins contain enough examples; sparse-length regions should be merged or ignored.
+
+(g)
+![lang_length_loss](image-2.png)
+![lang_length_error](image-3.png)
+Cross-entropy is 3.6–3.7 bits/token for 10–100 chars and then declines steadily (≈3.5 at 200, ≈3.45 at 500), meaning the classifier is more confident with longer inputs.
+0/1 error is high for 10-char strings (≈25%) but drops to 2–3% for 50–200 and 0% at 500, showing that length sharply reduces ambiguity.
+
+(h)
+![learning_curve_size](image-4.png)
+Error drops sharply when moving from 1× to 2× training data (12.3% to 7.0%), then improves more slowly at 4× (6.6%) and 8× (5.9%), showing clear diminishing returns. More data reduces n-gram sparsity, but the model’s capacity and class overlap limit further gains. As training size to infinite, the curve will approach a positive floor rather than 0.
+
+(i)
+![langid_learning_curve](image-5.png)
+Error decreases markedly as training grows: from 13% at 2K to 8.8% at 5K and 3.8% at 10K, then flattens near 2.5% at 20–50K, showing strong diminishing returns.
+The small bump at 2K over 1K likely reflects variance at tiny data scales or a suboptimal lambda* for that size.
+Overall, more data helps, but the curve approaches a non-zero floor due to model bias and class overlap.
+
 
 ## Q4:
 (a) For uniform estimate, every word, including 'oov', has a possibility of $\frac{1}{19999}$. However, this could be summed to $\frac{20000}{19999}$ and leaves out 'oov' with 0 probability. Model will then not be able to accept any new word.
@@ -69,3 +89,34 @@ $$\hat{p}(z|xy)=\frac{1+\lambda V\hat{p}(z|y)}{c(xy)+\lambda V}.$$
 Since it is unknown whether $\hat{p}(z|y)=\hat{p}(z'|y)$, the answer is still not necessarily equal.
 
 (d) When $\lambda$ increases, the ratio of the backed-off version model, (n-1)-gram, will become more weighted. Since model with less context (n gets smaller) could have larger possibilities for words, which introduces more smoothing, resulting in less variance and higher bias. Model tends to underfit the current corpus but to have a more stable result.  
+
+
+## Q6:
+INFO: model=swsmall_add0.1.model  num=10  max_len=20
+01: physically alright elaborate debit same productive ties bite his american darn limited always counting play meetings davis nuggets specialty account
+02: source real fondue christmas we've floors body both suppose ooh southwest row material wild governor michigan stop pack tasted needs
+03: recycling around definitely even below desert boys emergencies perfectly gee girls crust earn variety plano organizations comes round closer grades
+04: write picked minneapolis purpose suits silver delivered animal favor easier cup voice the father's polluting half try instruments during discover
+05: mom's drug none tons handy date you're living blue as buff pass smokers history baking grandma york manufacturing whole target
+06: admit return publicity matter earn pictures built huh_uh individuals watching that's dry lettuce concerns trouble terms expenses physical organizations cholesterol
+07: several meal sister march OOV fifty aids unsweetened then straight fair awareness theme wander birthdays laid based settles she's career
+08: just mervyn's during tests hoi curious meal row courses fancy yogurt play hydrocarbons love call decent fly now depend daughters
+09: battery payments delicious tragic talks battery did pressed cutting cases valley mystery jewelry skim soy cook both house hold it'll
+10: round probably worked bottles harder folks tasted diseases converters incinerator his emergency dissertation uncle illness taste metal atlanta yours stuck
+
+INFO: model=swsmall_add0.01.model  num=10  max_len=20
+01: physically alright elaborate debit same productive ties bite his american darn limited always counting play meetings davis nuggets specialty account
+02: source real fondue christmas we've floors body both suppose ooh southwest row material wild governor michigan stop pack tasted needs
+03: recycling around definitely even below desert boys emergencies perfectly gee girls crust earn variety plano organizations comes round closer grades
+04: write picked minneapolis purpose suits silver delivered animal favor easier cup voice the father's polluting half try instruments during discover
+05: mom's drug none tons handy date you're living boot as buff pass smokers history baking grandma york manufacturing whole target
+06: admit return publicity matter earn pictures built huh_uh individuals watching that's dry lettuce concerns trouble terms expenses physical organizations cholesterol
+07: several meal sister march OOV fifty aids unsweetened then straight fair awareness theme wander birthdays laid based settles she's career
+08: just mervyn's during tests hoi curious meal row courses fancy yogurt play hydrocarbons love call decent fly now depend daughters
+09: battery payments delicious tragic talks battery did pressed cutting cases valley mystery jewelry skim soy cook both house hold it'll
+10: round probably worked bottles harder folks tasted diseases converters incinerator his emergency dissertation uncle illness taste metal atlanta yours stuck 
+
+Both models produce locally fluent, topic-coherent fragments (food, health, payments, places) but remain list-like with weak sentence structure—classic n-gram behavior without BOS/EOS, so sequences end by truncation rather than clear punctuation. Outputs for lambda=0.1 and lambda=0.01 are nearly indistinguishable, differing only in rare lexical choices (e.g., “blue”→“boot”), which suggests smoothing strength barely shifts high-frequency trigram preferences while slightly nudging long-tail words. Occasional OOV tokens and abrupt endings further reflect vocabulary limits.
+
+
+
