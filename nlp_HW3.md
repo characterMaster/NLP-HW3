@@ -67,8 +67,8 @@ best $\lambda$ on combined  -> 0.005 (9.068397 bits/token)
 Sweeping $\lambda$ in {5, 0.5, 0.05, 0.005, 0.0005}, the dev cross-entropy is minimized at $\lambda=0.005$ (combined 9.068 bits/token). Larger $\lambda$ over-smooths toward uniform, while very small $\lambda$ under-smooths and overfits, so a mid-range $\lambda$ performs best.
 
 (f)
-![length_loss](image.png)
-![length_error](image-1.png)
+![length_loss](image-6.png)
+![length_error](image-7.png)
 With λ* fixed, combined cross-entropy is fairly flat around 10–11 bits/token from 0–5k, then drops to ~8.9 bits/token for 7–8k, suggesting longer documents are easier because they provide more evidence. The 0/1 error decreases from ~25% (0–999) to ~16% (1k–1.9k), but the 100% spikes in the 2–3k and 4–5k bins are artifacts of extremely tiny bin counts (likely 1 doc), so they aren’t statistically meaningful. Overall, performance improves with length when bins contain enough examples; sparse-length regions should be merged or ignored.
 
 (g)
@@ -109,31 +109,32 @@ Since it is unknown whether $\hat{p}(z|y)=\hat{p}(z'|y)$, the answer is still no
 
 
 ## Q6:
-INFO: model=swsmall_add0.1.model  num=10  max_len=20
-01: physically alright elaborate debit same productive ties bite his american darn limited always counting play meetings davis nuggets specialty account
-02: source real fondue christmas we've floors body both suppose ooh southwest row material wild governor michigan stop pack tasted needs
-03: recycling around definitely even below desert boys emergencies perfectly gee girls crust earn variety plano organizations comes round closer grades
-04: write picked minneapolis purpose suits silver delivered animal favor easier cup voice the father's polluting half try instruments during discover
-05: mom's drug none tons handy date you're living blue as buff pass smokers history baking grandma york manufacturing whole target
-06: admit return publicity matter earn pictures built huh_uh individuals watching that's dry lettuce concerns trouble terms expenses physical organizations cholesterol
-07: several meal sister march OOV fifty aids unsweetened then straight fair awareness theme wander birthdays laid based settles she's career
-08: just mervyn's during tests hoi curious meal row courses fancy yogurt play hydrocarbons love call decent fly now depend daughters
-09: battery payments delicious tragic talks battery did pressed cutting cases valley mystery jewelry skim soy cook both house hold it'll
-10: round probably worked bottles harder folks tasted diseases converters incinerator his emergency dissertation uncle illness taste metal atlanta yours stuck
+INFO: model=swsmall_backoff_add0.1.model  num=10  max_length=20
+01: right ...
+02: and it's not it's just like you know incineration place they just something i spent every one check a problem ...
+03: but who his what ...
+04: and then ...
+05: oh yeah ...
+06: and but i like eating any difference there like in plano ...
+07: right ...
+08: what they're really good experience and you know how you ...
+09: i mean fifty thousand people who are are burning up a very quickly ...
+10: oh yeah ...
 
-INFO: model=swsmall_add0.01.model  num=10  max_len=20
-01: physically alright elaborate debit same productive ties bite his american darn limited always counting play meetings davis nuggets specialty account
-02: source real fondue christmas we've floors body both suppose ooh southwest row material wild governor michigan stop pack tasted needs
-03: recycling around definitely even below desert boys emergencies perfectly gee girls crust earn variety plano organizations comes round closer grades
-04: write picked minneapolis purpose suits silver delivered animal favor easier cup voice the father's polluting half try instruments during discover
-05: mom's drug none tons handy date you're living boot as buff pass smokers history baking grandma york manufacturing whole target
-06: admit return publicity matter earn pictures built huh_uh individuals watching that's dry lettuce concerns trouble terms expenses physical organizations cholesterol
-07: several meal sister march OOV fifty aids unsweetened then straight fair awareness theme wander birthdays laid based settles she's career
-08: just mervyn's during tests hoi curious meal row courses fancy yogurt play hydrocarbons love call decent fly now depend daughters
-09: battery payments delicious tragic talks battery did pressed cutting cases valley mystery jewelry skim soy cook both house hold it'll
-10: round probably worked bottles harder folks tasted diseases converters incinerator his emergency dissertation uncle illness taste metal atlanta yours stuck 
+INFO: model=swsmall_add0.1.model  num=10  max_length=20
+01: well it's ann form readily tend handy dress experienced particles choosing p discovered took face we've pennsylvania floor seeds uncle ...
+02: yeah ...
+03: and they're church every appealing classes choices runs department package he's sesame g decision none automatically due our grandmothers fly ...
+04: uh i terrible household wise case discovered ways expense served speech hole stand frying tailored do losing rest but down ...
+05: uh_huh cornstarch lobby sad move tablespoons county skid relationships manager cup elaborate laws gone buy se floor united thrown popular ...
+06: but here milk high plastic austin sweaters expected unless science homemade away suspect these standards luck chips coat become familiar ...
+07: uh late record expenses be wish silly trouble iowa taught contributing kitchenette compared supposed sweat bed island unleaded ponds economy ...
+08: so i facing comfortable otherwise should various party retirement tech firm flying diane falls pounds eventually drove beans vegetarian grow ...
+09: do opened neighbors advertising ground overnight sales adding purchases half kitchenette nuts appreciate bag august opinion crust lower contribute mall ...
+10: and i'm example thoroughly burning useful talks arthritis heart getting frozen year luck true celery hates enough consideration yeah human ...
 
-Both models produce locally fluent, topic-coherent fragments (food, health, payments, places) but remain list-like with weak sentence structure—classic n-gram behavior without BOS/EOS, so sequences end by truncation rather than clear punctuation. Outputs for lambda=0.1 and lambda=0.01 are nearly indistinguishable, differing only in rare lexical choices (e.g., “blue”→“boot”), which suggests smoothing strength barely shifts high-frequency trigram preferences while slightly nudging long-tail words. Occasional OOV tokens and abrupt endings further reflect vocabulary limits.
+With backoff, samples collapse to frequent conversational frames (“right…”, “oh yeah…”, “and then…”) and end early—more conservative and fluent because unseen contexts fall back to lower-order estimates. Pure add-λ produces longer, content-heavy but rambling strings with odd word choices—more diverse, but noticeably less coherent.
+
 
 ## Q7:
 python code/train_lm.py vocab-genspam.txt log_linear data/gen_spam/train/gen --output log_linear_gen.model --lexicon lexicons/words-10.txt --l2_regularization 1 --epochs 0 --device cuda
