@@ -149,7 +149,7 @@ $$P_{\text{word}}(z\mid x,y), \qquad
 where $P_{\text{word}}(,\cdot\mid x,y)$ is normalized only over the seen vocabulary
 $V_{\text{seen}}$ (types observed in training), and $\beta(x,y)$ is the mass reserved for unseen words.
 
-Independently, train a character n-gram LM (with BOS/EOS at the character level). For any word spelling $$z=c_1\ldots c_m$$,
+Independently, train a character n-gram LM (with BOS/EOS at the character level). For any word spelling $z=c_1\ldots c_m$,
 
 $$P_{\text{char}}(z) = \prod_{t=1}^{m+1} P\big(c_t ,\big|, c_{t-n+1}^{t-1}\big),
 \quad c_{m+1}=\text{EOS}.$$
