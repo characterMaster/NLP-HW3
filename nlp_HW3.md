@@ -49,6 +49,18 @@ Therefore, the largest $p(gen) = min(\frac{1}{1+e^{\triangle_i}}) \rightarrow0$.
 In practical terms, under any reasonable prior, the classifier will not label all dev files as spam.
 
 (d)&(e) Results:
+lambda	split	bits_per_token	logprob_sum	tokens_sum
+5	gen	11.05263	-534704.134	48378
+5	spam	11.07215	-435954.834	39374
+0.5	gen	10.15485	-491271.333	48378
+0.5	spam	10.26566	-404200.097	39374
+0.05	gen	9.29458	-449653.191	48378
+0.05	spam	9.44152	-371750.408	39374
+0.005	gen	9.04616	-437635.128	48378
+0.005	spam	9.09572	-358134.879	39374
+0.0005	gen	9.49982	-459582.292	48378
+0.0005	spam	9.41952	-370884.18	39374
+
 best $\lambda$ on dev/gen   -> 0.005  (9.046160 bits/token)
 best $\lambda$ on dev/spam  -> 0.005 (9.095720 bits/token)
 best $\lambda$ on combined  -> 0.005 (9.068397 bits/token)
@@ -123,5 +135,61 @@ INFO: model=swsmall_add0.01.model  num=10  max_len=20
 
 Both models produce locally fluent, topic-coherent fragments (food, health, payments, places) but remain list-like with weak sentence structure—classic n-gram behavior without BOS/EOS, so sequences end by truncation rather than clear punctuation. Outputs for lambda=0.1 and lambda=0.01 are nearly indistinguishable, differing only in rare lexical choices (e.g., “blue”→“boot”), which suggests smoothing strength barely shifts high-frequency trigram preferences while slightly nudging long-tail words. Occasional OOV tokens and abrupt endings further reflect vocabulary limits.
 
+## Q10:
+1) Model (Word LM + Char LM mixture)
+
+Train a word-level trigram LM that explicitly allocates probability mass to an `OOV` bucket under each context $$(x,y)$$. Denote
+
+$$P_{\text{word}}(z\mid x,y), \qquad
+\beta(x,y)\equiv P(\text{OOV}\mid x,y)$$,
+
+where $$P_{\text{word}}(,\cdot\mid x,y)$$ is normalized only over the seen vocabulary
+$$V_{\text{seen}}$$ (types observed in training), and $$\beta(x,y)$$ is the mass reserved for unseen words.
+
+Independently, train a character n-gram LM (with BOS/EOS at the character level). For any word spelling $$z=c_1\ldots c_m$$,
+
+$$P_{\text{char}}(z) = \prod_{t=1}^{m+1} P\big(c_t ,\big|, c_{t-n+1}^{t-1}\big),
+\quad c_{m+1}=\text{EOS}.$$
+
+To avoid allocating `OOV` mass to seen words, renormalize the character distribution over the unseen domain:
+
+$$\tilde P_{\text{char}}(z)=
+\begin{cases}
+\dfrac{P_{\text{char}}(z)}{\displaystyle\sum_{w\notin V_{\text{seen}}} P_{\text{char}}(w)}, & z\notin V_{\text{seen}},[12pt]
+0, & z\in V_{\text{seen}}.
+\end{cases}$$
+
+The final open-vocabulary conditional distribution is the mixture
+$$P(z\mid x,y)=
+\begin{cases}
+\big(1-\beta(x,y)\big),P_{\text{word}}(z\mid x,y), & z\in V_{\text{seen}},[6pt]
+\beta(x,y),\tilde P_{\text{char}}(z), & z\notin V_{\text{seen}}.
+\end{cases}$$
+Normalization holds:
+
+$$\sum_{z} P(z\mid x,y)
+= (1-\beta)\sum_{z\in V_{\text{seen}}}P_{\text{word}}(z\mid x,y)
+* \beta!!\sum_{z\notin V_{\text{seen}}}\tilde P_{\text{char}}(z)
+  = (1-\beta)\cdot1+\beta\cdot1=1.$$
+
+2) Training
+
+Word trigram LM. Count and smooth as usual (e.g., add-($$\lambda$$), backoff). Treat `OOV` as a dedicated type during training so that you obtain both $$P_{\text{word}}(\cdot\mid x,y)$$ over $$V_{\text{seen}}$$ and the `OOV` mass $$\beta(x,y)=P(\text{OOV}\mid x,y)$$.
+Character n-gram LM.** Train on all word spellings (characters with BOS/EOS), with smoothing. This model is naturally normalized over the space of strings.
+
+3) Scoring/Sampling
+
+Given context $$(x,y)$$ and candidate word $$z$$:
+
+If $$z\in V_{\text{seen}}$$, use $$(1-\beta(x,y)),P_{\text{word}}(z\mid x,y)$$.
+If $$z\notin V_{\text{seen}}), use (\beta(x,y),\tilde P_{\text{char}}(z)$$.
+
+If $$x$$ or $$y$$ is itself unseen, apply the usual backoff within the word LM $$trigram \to bigram \to unigram$$ to compute $$P_{\text{word}}$$ and $$\beta$$. The character component $$\tilde P_{\text{char}}$$ is context-independent and can be used as is.
+
+ 4) Intuition
+
+The word LM handles known words precisely;
+The reserved `OOV` mass $$\beta(x,y)$$ is distributed across specific unseen spellings by the character LM, yielding a true open vocabulary;
+Renormalizing over the unseen set preserves total probability 1 and prevents “stealing” mass from seen words.
 
 
