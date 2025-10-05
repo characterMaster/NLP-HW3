@@ -331,7 +331,7 @@ class BackoffAddLambdaLanguageModel(AddLambdaLanguageModel):
             return 1 / self.vocab_size 
         
         def unigram(z):
-            return (self.event_count[z] + self.lambda_* uniform) / (total_tokens + self.lambda_ * self.vocab_size)
+            return (self.event_count[z] + self.lambda_* uniform()) / (total_tokens + self.lambda_ * self.vocab_size)
         
         # bigram probability, backing off to unigram
         def bigram(y, z):
