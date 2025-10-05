@@ -4,7 +4,7 @@
 trigram_randsent.py — Q6: sample text from a trained trigram LM (minimal CLI).
 
 Usage:
-  python ./code/trigram_randsent.py path/to/model.model --num 5 --max_len 50 --seed 42
+  python ./code/trigram_randsent.py path/to/model.model 5 --max_length 50 --seed 42
 """
 
 import argparse
@@ -40,13 +40,17 @@ def renorm(ps):
     return [p / z for p in ps]
 
 def sample_from_dist(tokens, probs):
-    r = random.random()
-    s = 0.0
-    for t, p in zip(tokens, probs):
-        s += p
-        if r <= s:
-            return t
-    return tokens[-1]
+    # r = random.random()
+    # s = 0.0
+    # for t, p in zip(tokens, probs):
+    #     s += p
+    #     if r <= s:
+    #         return t
+    # return tokens[-1]
+    probs_tensor = torch.tensor(probs, dtype=torch.float32)
+    probs_tensor = probs_tensor / probs_tensor.sum()  # normalize to 1
+    idx = torch.multinomial(probs_tensor, num_samples=1).item()
+    return tokens[idx]
 
 def next_token_distribution(lm, vocab_list, prev2, prev1):
     """Return list of P(w | prev2, prev1) over vocab_list (robust to different APIs)."""
@@ -79,30 +83,34 @@ def unigram_probs(lm, vocab_list):
 
 ENDERS_CANDIDATES = {".", "!", "?"}  # common sentence enders
 
-def sample_one(lm, vocab_list, max_len=50):
-    enders = list(ENDERS_CANDIDATES & set(vocab_list))
-    uni = unigram_probs(lm, vocab_list)
+def sample_one(lm, vocab_list, max_length=50):
+    start_token = "BOS"
+    end_token = "EOS"
+    # enders = list(ENDERS_CANDIDATES & set(vocab_list))
+    # uni = unigram_probs(lm, vocab_list)
 
     # Cold start: first two tokens from unigram/uniform
-    seq = [sample_from_dist(vocab_list, uni),
-           sample_from_dist(vocab_list, uni)]
+    seq = [start_token, start_token]
 
     # Trigram sampling from the 3rd token
-    while len(seq) < max_len:
+    while len(seq) < max_length+2:
         w2, w1 = seq[-2], seq[-1]
         probs = renorm(next_token_distribution(lm, vocab_list, w2, w1))
         nxt = sample_from_dist(vocab_list, probs)
-        seq.append(nxt)
-        if enders and nxt in enders:
+        if nxt == end_token:
             break
+        seq.append(nxt)
+    seq = seq[2:]
+    if seq[-1] not in ENDERS_CANDIDATES:
+        return " ".join(seq)+' ...'
     return " ".join(seq)
 
 
 def main():
     ap = argparse.ArgumentParser(description="Sample from a trigram LM without BOS/EOS.")
     ap.add_argument("model", type=Path, help="path to trained model (.model)")
-    ap.add_argument("--num", type=int, default=5, help="number of samples (default: 5)")
-    ap.add_argument("--max_len", type=int, default=50, help="max tokens per sample (default: 50)")
+    ap.add_argument("num", type=int, default=5, help="number of samples (default: 5)")
+    ap.add_argument("--max_length", type=int, default=50, help="max tokens per sample (default: 50)")
     ap.add_argument("--seed", type=int, default=None, help="random seed for reproducibility")
     args = ap.parse_args()
 
@@ -111,10 +119,11 @@ def main():
 
     lm = torch.load(args.model, map_location="cpu")
     vocab_list = extract_vocab_tokens(lm)
-
-    print(f"INFO: model={args.model.name}  num={args.num}  max_len={args.max_len}")
+    if "UNK" not in vocab_list:
+        vocab_list.append("UNK")
+    print(f"INFO: model={args.model.name}  num={args.num}  max_length={args.max_length}")
     for i in range(1, args.num + 1):
-        s = sample_one(lm, vocab_list, max_len=args.max_len)
+        s = sample_one(lm, vocab_list, max_length=args.max_length)
         print(f"{i:02d}: {s}")
 
 if __name__ == "__main__":

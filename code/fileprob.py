@@ -58,7 +58,7 @@ def file_log_prob(file: Path, lm: LanguageModel) -> float:
         log_prob += lm.log_prob(x, y, z)  # log p(z | xy)
 
         # If the factor p(z | xy) = 0, then it will drive our cumulative file 
-        # probability to 0 and our cumulative log_prob to -infinity.  In 
+        # probability to 0 abosnd our cumulative log_prob to -infinity.  In 
         # this case we can stop early, since the file probability will stay 
         # at 0 regardless of the remaining tokens.
         if log_prob == -math.inf: break 
