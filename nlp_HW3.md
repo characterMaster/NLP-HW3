@@ -139,6 +139,34 @@ With backoff, samples collapse to frequent conversational frames (“right…”
 ## Q7:
 
 
+## Q8:
+Given an utterance $u$ and $K$ candidate transcripts $\{\tilde{w}_1,\dots,\tilde{w}_K\}$,
+we choose the best candidate by Bayes' rule:
+
+$$\hat{w}
+=\arg\max_{\tilde{w}} P(\tilde{w}\mid u)
+=\arg\max_{\tilde{w}} P(u\mid \tilde{w}) P(\tilde{w}).$$
+
+Working in base-2 log domain yields an equivalent criterion:
+
+$$\hat{w}
+=\arg\max_{\tilde{w}}
+\Big[\log_2 P(u\mid \tilde{w}) + log_2 P(\tilde{w})\Big].$$
+
+The file's 2nd column provides the acoustic-model score $\log_2 P(u\mid \tilde{w})$; we use it directly.
+The language-model score is computed by our trigram LM:
+
+$$log_2 P(\tilde{w})
+  = \sum_{t} \log_2 P(w_t \mid w_{t-2}, w_{t-1})$$
+
+where the sentence is framed with $<s>$ $<s>$ and $</s>$.
+For each candidate $\tilde{w}$, compute:
+
+$$\mathrm{score}(\tilde{w})
+= log_2 P(u\mid \tilde{w}) + log_2 P(\tilde{w})$$
+
+and select the candidate with the largest score.
+
 ## Q10:
 1) Model (Word LM + Char LM mixture)
 
