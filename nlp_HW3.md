@@ -175,7 +175,7 @@ $$\sum_{z} P(z\mid x,y)
 2) Training
 
 Word trigram LM. Count and smooth as usual (e.g., add-($$\lambda$$), backoff). Treat `OOV` as a dedicated type during training so that you obtain both $$P_{\text{word}}(\cdot\mid x,y)$$ over $$V_{\text{seen}}$$ and the `OOV` mass $$\beta(x,y)=P(\text{OOV}\mid x,y)$$.
-Character n-gram LM.** Train on all word spellings (characters with BOS/EOS), with smoothing. This model is naturally normalized over the space of strings.
+Character n-gram LM. Train on all word spellings (characters with BOS/EOS), with smoothing. This model is naturally normalized over the space of strings.
 
 3) Scoring/Sampling
 
