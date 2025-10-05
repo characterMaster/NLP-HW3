@@ -324,11 +324,25 @@ class BackoffAddLambdaLanguageModel(AddLambdaLanguageModel):
 
     def prob(self, x: Wordtype, y: Wordtype, z: Wordtype) -> float:
         # TODO: Reimplement me so that I do backoff
-        bigram_p = self.event_count[y, z] / self.context_count[y]
-        assert self.event_count[x, y, z] <= self.context_count[x, y]
-        return ((self.event_count[x, y, z] + self.lambda_ * self.vocab_size* bigram_p) /
-                (self.context_count[x, y] + self.lambda_ * self.vocab_size))
+                # unigram probability
+        total_tokens = self.event_count[()]
+
+        def uniform():
+            return 1 / self.vocab_size 
         
+        def unigram(z):
+            return (self.event_count[z] + self.lambda_* uniform) / (total_tokens + self.lambda_ * self.vocab_size)
+        
+        # bigram probability, backing off to unigram
+        def bigram(y, z):
+            num = self.event_count[y, z] + self.lambda_ * self.vocab_size * unigram(z)
+            denom = self.context_count[y] + self.lambda_ * self.vocab_size
+            return num / denom
+        
+        assert self.event_count[x, y, z] <= self.context_count[x, y]
+        return ((self.event_count[x, y, z] + self.lambda_ * self.vocab_size* bigram(y, z)) /
+                (self.context_count[x, y] + self.lambda_ * self.vocab_size))
+
         # return super().prob(x, y, z)
         # Don't forget the difference between the Wordtype z and the
         # 1-element tuple (z,). If you're looking up counts,
@@ -345,13 +359,24 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         self.l2: float = l2
 
         # TODO: ADD CODE TO READ THE LEXICON OF WORD VECTORS AND STORE IT IN A USEFUL FORMAT.
-        self.dim: int = 99999999999  # TODO: SET THIS TO THE DIMENSIONALITY OF THE VECTORS
-
+        
+        lexicon ={}
+        self.dim: int = int(lexicon_file.split('-')[-1].replace('.txt',''))  # TODO: SET THIS TO THE DIMENSIONALITY OF THE VECTORS
+        
+        with open(lexicon_file, "r") as f:
+            for line in f:
+                parts = line.split()
+                word = parts[0]
+                vec = torch.tensor([float(x) for x in parts[1:]])
+                lexicon[word] = vec
+        self.lexicon = lexicon
+        self.E = torch.stack([lexicon[w] if w in lexicon else lexicon['OOL'] for w in vocab], dim=1)
+        
         # We wrap the following matrices in nn.Parameter objects.
         # This lets PyTorch know that these are parameters of the model
         # that should be listed in self.parameters() and will be
         # updated during training.
-        #
+        
         # We can also store other tensors in the model class,
         # like constant coefficients that shouldn't be altered by
         # training, but those wouldn't use nn.Parameter.
@@ -386,6 +411,7 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         # The return type, TorchScalar, represents a torch.Tensor scalar.
         # See Question 7 in INSTRUCTIONS.md for more info about fine-grained 
         # type annotations for Tensors.
+        
         raise NotImplementedError("Implement me!")
 
     def logits(self, x: Wordtype, y: Wordtype) -> Float[torch.Tensor,"vocab"]:
@@ -401,7 +427,13 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         # The operator `@` is a nice way to write matrix multiplication:
         # you can write J @ K as shorthand for torch.mul(J, K).
         # J @ K looks more like the usual math notation.
-        # 
+
+        x_vec = self.E[:, self.vocab.index(x) if x in self.vocab else self.vocab.index("OOV")]
+        y_vec = self.E[:, self.vocab.index(y) if y in self.vocab else self.vocab.index("OOV")]
+        h = self.X.T @ x_vec + self.Y.T @ y_vec
+        logits = h @ self.E  # shape [|V|]
+        return logits
+        
         # This function's return type is declared (using the jaxtyping module)
         # to be a torch.Tensor whose elements are Floats, and which has one
         # dimension of length "vocab".  This can be multiplied in a type-safe
