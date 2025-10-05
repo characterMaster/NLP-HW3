@@ -50,16 +50,16 @@ In practical terms, under any reasonable prior, the classifier will not label al
 
 (d)&(e) Results:
 lambda	split	bits_per_token	logprob_sum	tokens_sum
-5	gen	11.05263	-534704.134	48378
-5	spam	11.07215	-435954.834	39374
-0.5	gen	10.15485	-491271.333	48378
-0.5	spam	10.26566	-404200.097	39374
-0.05	gen	9.29458	-449653.191	48378
-0.05	spam	9.44152	-371750.408	39374
-0.005	gen	9.04616	-437635.128	48378
-0.005	spam	9.09572	-358134.879	39374
-0.0005	gen	9.49982	-459582.292	48378
-0.0005	spam	9.41952	-370884.18	39374
+5	    gen	    11.05263	    -534704.134	48378
+5	    spam	11.07215	    -435954.834	39374
+0.5	    gen	    10.15485	    -491271.333	48378
+0.5	    spam	10.26566	    -404200.097	39374
+0.05	gen	    9.29458	        -449653.191	48378
+0.05	spam	9.44152	        -371750.408	39374
+0.005	gen	    9.04616	        -437635.128	48378
+0.005	spam	9.09572	        -358134.879	39374
+0.0005	gen	    9.49982	        -459582.292	48378
+0.0005	spam	9.41952	        -370884.18	39374
 
 best $\lambda$ on dev/gen   -> 0.005  (9.046160 bits/token)
 best $\lambda$ on dev/spam  -> 0.005 (9.095720 bits/token)
@@ -182,7 +182,7 @@ Character n-gram LM. Train on all word spellings (characters with BOS/EOS), with
 Given context $$(x,y)$$ and candidate word $$z$$:
 
 If $$z\in V_{\text{seen}}$$, use $$(1-\beta(x,y)),P_{\text{word}}(z\mid x,y)$$.
-If $$z\notin V_{\text{seen}}), use (\beta(x,y),\tilde P_{\text{char}}(z)$$.
+If $$z\notin V_{\text{seen}}$$, use $$\beta(x,y),\tilde P_{\text{char}}(z)$$.
 
 If $$x$$ or $$y$$ is itself unseen, apply the usual backoff within the word LM $$trigram \to bigram \to unigram$$ to compute $$P_{\text{word}}$$ and $$\beta$$. The character component $$\tilde P_{\text{char}}$$ is context-independent and can be used as is.
 
