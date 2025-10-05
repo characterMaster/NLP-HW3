@@ -138,13 +138,13 @@ Both models produce locally fluent, topic-coherent fragments (food, health, paym
 ## Q10:
 1) Model (Word LM + Char LM mixture)
 
-Train a word-level trigram LM that explicitly allocates probability mass to an `OOV` bucket under each context $$(x,y)$$. Denote
+Train a word-level trigram LM that explicitly allocates probability mass to an `OOV` bucket under each context $(x,y)$. Denote
 
 $$P_{\text{word}}(z\mid x,y), \qquad
 \beta(x,y)\equiv P(\text{OOV}\mid x,y)$$,
 
-where $$P_{\text{word}}(,\cdot\mid x,y)$$ is normalized only over the seen vocabulary
-$$V_{\text{seen}}$$ (types observed in training), and $$\beta(x,y)$$ is the mass reserved for unseen words.
+where $P_{\text{word}}(,\cdot\mid x,y)$ is normalized only over the seen vocabulary
+$V_{\text{seen}}$ (types observed in training), and $\beta(x,y)$ is the mass reserved for unseen words.
 
 Independently, train a character n-gram LM (with BOS/EOS at the character level). For any word spelling $$z=c_1\ldots c_m$$,
 
@@ -174,22 +174,22 @@ $$\sum_{z} P(z\mid x,y)
 
 2) Training
 
-Word trigram LM. Count and smooth as usual (e.g., add-($$\lambda$$), backoff). Treat `OOV` as a dedicated type during training so that you obtain both $$P_{\text{word}}(\cdot\mid x,y)$$ over $$V_{\text{seen}}$$ and the `OOV` mass $$\beta(x,y)=P(\text{OOV}\mid x,y)$$.
+Word trigram LM. Count and smooth as usual (e.g., add-($\lambda$), backoff). Treat `OOV` as a dedicated type during training so that you obtain both $P_{\text{word}}(\cdot\mid x,y)$ over $V_{\text{seen}}$ and the `OOV` mass $\beta(x,y)=P(\text{OOV}\mid x,y)$.
 Character n-gram LM. Train on all word spellings (characters with BOS/EOS), with smoothing. This model is naturally normalized over the space of strings.
 
 3) Scoring/Sampling
 
-Given context $$(x,y)$$ and candidate word $$z$$:
+Given context $(x,y)$ and candidate word $z$:
 
-If $$z\in V_{\text{seen}}$$, use $$(1-\beta(x,y)),P_{\text{word}}(z\mid x,y)$$.
-If $$z\notin V_{\text{seen}}$$, use $$\beta(x,y),\tilde P_{\text{char}}(z)$$.
+If $z\in V_{\text{seen}}$, use $(1-\beta(x,y)),P_{\text{word}}(z\mid x,y)$.
+If $z\notin V_{\text{seen}}$, use $\beta(x,y),\tilde P_{\text{char}}(z)$.
 
-If $$x$$ or $$y$$ is itself unseen, apply the usual backoff within the word LM $$trigram \to bigram \to unigram$$ to compute $$P_{\text{word}}$$ and $$\beta$$. The character component $$\tilde P_{\text{char}}$$ is context-independent and can be used as is.
+If $x$ or $y$ is itself unseen, apply the usual backoff within the word LM $trigram \to bigram \to unigram$ to compute $P_{\text{word}}$ and $\beta$. The character component $\tilde P_{\text{char}}$ is context-independent and can be used as is.
 
  4) Intuition
 
 The word LM handles known words precisely;
-The reserved `OOV` mass $$\beta(x,y)$$ is distributed across specific unseen spellings by the character LM, yielding a true open vocabulary;
+The reserved `OOV` mass $\beta(x,y)$ is distributed across specific unseen spellings by the character LM, yielding a true open vocabulary;
 Renormalizing over the unseen set preserves total probability 1 and prevents “stealing” mass from seen words.
 
 
