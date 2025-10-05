@@ -136,7 +136,7 @@ INFO: model=swsmall_add0.01.model  num=10  max_len=20
 Both models produce locally fluent, topic-coherent fragments (food, health, payments, places) but remain list-like with weak sentence structure—classic n-gram behavior without BOS/EOS, so sequences end by truncation rather than clear punctuation. Outputs for lambda=0.1 and lambda=0.01 are nearly indistinguishable, differing only in rare lexical choices (e.g., “blue”→“boot”), which suggests smoothing strength barely shifts high-frequency trigram preferences while slightly nudging long-tail words. Occasional OOV tokens and abrupt endings further reflect vocabulary limits.
 
 ## Q7:
-
+python code/train_lm.py vocab-genspam.txt log_linear data/gen_spam/train/gen --output log_linear_gen.model --lexicon lexicons/words-10.txt --l2_regularization 1 --epochs 0 --device cuda
 
 ## Q10:
 1) Model (Word LM + Char LM mixture)
