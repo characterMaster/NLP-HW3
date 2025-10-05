@@ -10,6 +10,7 @@
 import argparse, subprocess, re, glob, csv
 from collections import defaultdict, Counter
 from pathlib import Path
+from turtle import width
 
 import matplotlib.pyplot as plt
 
@@ -172,26 +173,29 @@ def main():
 
 
     # 5) histogram plots (binned by length)
-    bin_w = max(1, int(args.bin_width))
+    bin_w = args.bin_width
     # rows: (L, err_pct, wrong, total, bits, tok_g, tok_s)
     if not rows:
         print("No rows to plot."); return
-    minL = min(r[0] for r in rows)
-    maxL = max(r[0] for r in rows)
-
+    L_list = [r[0] for r in rows]
+    max_len  = max(L_list)
+    max_edge = ((max_len // bin_w) + 1) * bin_w 
+    edges    = list(range(0, max_edge + 1, bin_w))
+    K = len(edges) - 1
     # create bins [b, b+bin_w)
-    bins = list(range((minL // bin_w) * bin_w, (maxL // bin_w) * bin_w + bin_w, bin_w))
-
+    bins = [f"{edges[i]}-{edges[i+1]-1}" for i in range(K)]
     # aggregator
     import math
-    bin_err_wrong   = [0] * (len(bins) - 1)
-    bin_err_total   = [0] * (len(bins) - 1)
-    bin_tok_sum     = [0] * (len(bins) - 1)
-    bin_bits_weight = [0.0] * (len(bins) - 1)  # = sum( bits_L * tok_L )
+    bin_err_wrong   = [0] * K
+    bin_err_total   = [0] * K
+    bin_tok_sum     = [0] * K
+    bin_bits_weight = [0.0] * K  # = sum( bits_L * tok_L )
 
     def bin_index(L):
         # find the bin [bins[i], bins[i+1]) that L belongs to
-        i = min(max((L - bins[0]) // bin_w, 0), len(bins) - 2)
+        i = L // bin_w
+        if i >= K:
+            i = K-1
         return int(i)
 
     for L, err_pct, wrong, total, bits, tok_g, tok_s in rows:
@@ -204,42 +208,39 @@ def main():
             bin_bits_weight[i] += float(bits) * tokL
 
     # calculate metrics for each bin
-    bin_centers = [ (bins[i] + bins[i+1]) / 2 for i in range(len(bins)-1) ]
-    bin_labels  = [ f"{bins[i]}-{bins[i+1]-1}" for i in range(len(bins)-1) ]
-    bin_err_pct = [ (100.0 * bin_err_wrong[i] / bin_err_total[i]) if bin_err_total[i] > 0 else float("nan")
-                    for i in range(len(bins)-1) ]
-    bin_bits    = [ (bin_bits_weight[i] / bin_tok_sum[i]) if bin_tok_sum[i] > 0 else float("nan")
-                    for i in range(len(bins)-1) ]
+    bin_err_pct_all = [(100.0 * bin_err_wrong[i] / bin_err_total[i]) if bin_err_total[i] > 0 else float("nan")
+                   for i in range(K)]
+    bin_bits_all    = [(bin_bits_weight[i] / bin_tok_sum[i]) if bin_tok_sum[i] > 0 else float("nan")
+                   for i in range(K)]
 
     # remove empty bins to avoid clutter
-    keep = [i for i in range(len(bins)-1) if bin_err_total[i] > 0]
-    bin_centers = [bin_centers[i] for i in keep]
-    bin_labels  = [bin_labels[i]  for i in keep]
-    bin_err_pct = [bin_err_pct[i] for i in keep]
-    bin_bits    = [bin_bits[i]    for i in keep]
+    keep = [i for i in range(K) if bin_err_total[i] > 0]
+    bin_labels = [bins[i]  for i in keep]
+    bin_err_pct = [bin_err_pct_all[i] for i in keep]
+    bin_bits    = [bin_bits_all[i]    for i in keep]
 
     # plot bar chart: error rate
     import matplotlib.pyplot as plt
-    width = bin_w * 0.9
+    xpos = list(range(len(keep)))
+    width = 0.9 
     plt.figure()
-    plt.bar(bin_centers, bin_err_pct, width=width, align="center")
+    plt.bar(xpos, bin_err_pct, width=width, align="center")
     plt.xlabel("Document length (from filename)")
     plt.ylabel("Dev 0/1 error (%)")
     plt.title("Error vs. length (λ* fixed, binned)")
     plt.grid(True, axis="y", linestyle="--", linewidth=0.5)
-    plt.xticks(bin_centers, bin_labels, rotation=45, ha="right")
+    plt.xticks(xpos, bin_labels, rotation=45, ha="right")
     plt.tight_layout()
     err_png = OUTDIR / "length_curve_error.png"
     plt.savefig(err_png, dpi=150)
 
-    # plot bar chart: bits/token (token-weighted average)
-    plt.figure()
-    plt.bar(bin_centers, bin_bits, width=width, align="center")
+    plt.figure()    
+    plt.bar(xpos, bin_bits, width=width, align="center")
     plt.xlabel("Document length (from filename)")
     plt.ylabel("Combined cross-entropy (bits/token)")
     plt.title("Cross-entropy vs. length (λ* fixed, binned)")
     plt.grid(True, axis="y", linestyle="--", linewidth=0.5)
-    plt.xticks(bin_centers, bin_labels, rotation=45, ha="right")
+    plt.xticks(xpos, bin_labels, rotation=45, ha="right")
     plt.tight_layout()
     bits_png = OUTDIR / "length_curve_bits.png"
     plt.savefig(bits_png, dpi=150)

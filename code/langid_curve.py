@@ -1,5 +1,5 @@
 # coding: utf-8
-# curve_langid.py — Language ID (english_spanish) Q3(f)-style: performance vs. length buckets
+# curve_langid.py — Language ID (english_spanish) Q3(g)-style: performance vs. length buckets
 # Usage:
 #   python ./code/langid_curve.py <english_model> <spanish_model> --prior 0.7
 # Outputs:

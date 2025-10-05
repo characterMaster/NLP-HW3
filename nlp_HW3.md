@@ -67,8 +67,8 @@ best $\lambda$ on combined  -> 0.005 (9.068397 bits/token)
 Sweeping $\lambda$ in {5, 0.5, 0.05, 0.005, 0.0005}, the dev cross-entropy is minimized at $\lambda=0.005$ (combined 9.068 bits/token). Larger $\lambda$ over-smooths toward uniform, while very small $\lambda$ under-smooths and overfits, so a mid-range $\lambda$ performs best.
 
 (f)
-![length_loss](image.png)
-![length_error](image-1.png)
+![length_loss](image-6.png)
+![length_error](image-7.png)
 With λ* fixed, combined cross-entropy is fairly flat around 10–11 bits/token from 0–5k, then drops to ~8.9 bits/token for 7–8k, suggesting longer documents are easier because they provide more evidence. The 0/1 error decreases from ~25% (0–999) to ~16% (1k–1.9k), but the 100% spikes in the 2–3k and 4–5k bins are artifacts of extremely tiny bin counts (likely 1 doc), so they aren’t statistically meaningful. Overall, performance improves with length when bins contain enough examples; sparse-length regions should be merged or ignored.
 
 (g)
