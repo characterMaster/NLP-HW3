@@ -41,13 +41,18 @@ Average log-loss on dev files: 1.1601 bits per doc (239 files)
 Actual 0/1 error rate on dev files: 0.0962 (239 files)
 
 (c) Minimum prior P(gen) to classify ALL dev as spam = 0.0000.
-The result Minimum prior P(gen) = 0.0000 means there exists at least one dev document whose likelihood under the gen model is vastly higher than under spam (i.e., a very large delta = logp(d|gen)-logp(d|spam)). To force even that document to be labeled spam, you’d have to set P(gen) to an essentially zero prior, which rounds to 0.0000 at display precision. In practical terms, under any reasonable prior, the classifier will not label all dev files as spam.
+The result Minimum prior P(gen) = 0.0000 means there exists at least one dev document whose likelihood under the gen model is vastly higher than under spam (i.e., a very large delta = logp(d|gen)-logp(d|spam)). To force even that document to be labeled spam, we have to set P(gen) to an essentially zero prior, which rounds to 0.0000 at display precision.
+To be more specific, if all documents are classified as spam, we have:
+$$\log p(d_i|gen)+\log p(gen)\leq\log p(d_i|spam)+\log p(spam)\\
+\log \frac{1-p(gen)}{p(gen)}\geq \triangle_i = \log p(d_i|gen)- \log p(d_i|spam)\\p(gen)\leq \frac{1}{1+e^{\triangle_i}}$$.
+Therefore, the largest $p(gen) = min(\frac{1}{1+e^{\triangle_i}}) \rightarrow0$.   
+In practical terms, under any reasonable prior, the classifier will not label all dev files as spam.
 
 (d)&(e) Results:
-best lambda on dev/gen   -> 0.005  (9.046160 bits/token)
-best lambda on dev/spam  -> 0.005 (9.095720 bits/token)
-best lambda on combined  -> 0.005 (9.068397 bits/token)
-Sweeping lambda in {5, 0.5, 0.05, 0.005, 0.0005}, the dev cross-entropy is minimized at lambda=0.005 (combined 9.068 bits/token). Larger lambda over-smooths toward uniform, while very small lambda under-smooths and overfits, so a mid-range lambda performs best.
+best $\lambda$ on dev/gen   -> 0.005  (9.046160 bits/token)
+best $\lambda$ on dev/spam  -> 0.005 (9.095720 bits/token)
+best $\lambda$ on combined  -> 0.005 (9.068397 bits/token)
+Sweeping $\lambda$ in {5, 0.5, 0.05, 0.005, 0.0005}, the dev cross-entropy is minimized at $\lambda=0.005$ (combined 9.068 bits/token). Larger $\lambda$ over-smooths toward uniform, while very small $\lambda$ under-smooths and overfits, so a mid-range $\lambda$ performs best.
 
 (f)
 ![length_loss](image.png)

@@ -121,6 +121,8 @@ def main():
     spam_name = str(args.model2)
     gen_count = 0
     spam_count = 0
+    true_gen_count = 0
+    true_spam_count = 0
     total = 0
     expected_error_sum = 0.0   # sum_d (1 - p(y_true|d))
     logloss_sum = 0.0          # sum_d (-log2 p(y_true|d))
@@ -147,6 +149,9 @@ def main():
         if pred != true_label and true_label:
             zero_one_errors += 1
         if true_label:
+            if true_label == "gen":
+                true_gen_count+=1
+            else: true_spam_count+=1
             # posterior p(gen|d) via logistic: 1 / (1 + exp(Δ))
             delta = lp_spam - lp_gen
             if delta > 100:   # avoid overflow in exp()
@@ -186,6 +191,8 @@ def main():
     spam_pct = 100.0 * spam_count / total
     print(f"{gen_count} files were more probably from {gen_name} ({gen_pct:.2f}%)")
     print(f"{spam_count} files were more probably from {spam_name} ({spam_pct:.2f}%)")
+    print(f"Genuine: in total {true_gen_count} files")
+    print(f"Spam: in total {true_spam_count} files")
 
     if e1_count > 0:
         ee = expected_error_sum / e1_count
