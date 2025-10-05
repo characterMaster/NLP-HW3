@@ -33,6 +33,7 @@ from jaxtyping import Float
 from typeguard import typechecked
 from typing import Counter, Collection
 from collections import Counter
+from tqdm import tqdm
 
 log = logging.getLogger(Path(__file__).stem)  # For usage, see findsim.py in earlier assignment.
 
@@ -361,7 +362,7 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         # TODO: ADD CODE TO READ THE LEXICON OF WORD VECTORS AND STORE IT IN A USEFUL FORMAT.
         
         lexicon ={}
-        self.dim: int = int(lexicon_file.split('-')[-1].replace('.txt',''))  # TODO: SET THIS TO THE DIMENSIONALITY OF THE VECTORS
+        self.dim: int = int(str(lexicon_file).split('-')[-1].replace('.txt',''))  # TODO: SET THIS TO THE DIMENSIONALITY OF THE VECTORS
         
         with open(lexicon_file, "r") as f:
             for line in f:
@@ -382,7 +383,7 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         # training, but those wouldn't use nn.Parameter.
         self.X = nn.Parameter(torch.zeros((self.dim, self.dim)), requires_grad=True)
         self.Y = nn.Parameter(torch.zeros((self.dim, self.dim)), requires_grad=True)
-
+        self.epochs = epochs
     def log_prob(self, x: Wordtype, y: Wordtype, z: Wordtype) -> float:
         """Return log p(z | xy) according to this language model."""
         # https://pytorch.org/docs/stable/generated/torch.Tensor.item.html
@@ -407,12 +408,14 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         # compute the normalization constant Z, or this method
         # will be very slow. Some useful functions of pytorch that could
         # be useful are torch.logsumexp and torch.log_softmax.
-        #
+        logits = self.logits(x,y)
+        log_probs = torch.log_softmax(logits, dim=-1)
+        idx = self.vocab.index(z) if z in self.vocab else self.vocab.index("OOV")
         # The return type, TorchScalar, represents a torch.Tensor scalar.
         # See Question 7 in INSTRUCTIONS.md for more info about fine-grained 
         # type annotations for Tensors.
+        return log_probs[idx]
         
-        raise NotImplementedError("Implement me!")
 
     def logits(self, x: Wordtype, y: Wordtype) -> Float[torch.Tensor,"vocab"]:
         """Return a vector of the logs of the unnormalized probabilities f(xyz) * θ 
@@ -454,7 +457,7 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         ### The `type: ignore` comment above tells the type checker to ignore this inconsistency.
         
         # Optimization hyperparameters.
-        eta0 = 0.1  # initial learning rate
+        eta0 = 0.01  # initial learning rate
 
         # This is why we needed the nn.Parameter above.
         # The optimizer needs to know the list of parameters
@@ -506,6 +509,21 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         # instead of iterating over
         #     read_trigrams(file)
         #####################
+        for epoch in range(self.epochs):
+            total_F = 0.0
+            count = 0
+            for (x, y, z) in tqdm(read_trigrams(file, self.vocab), total=N):
+                log_p = self.log_prob_tensor(x, y, z)
+                reg = (self.l2 / N) * (torch.sum(self.X ** 2) + torch.sum(self.Y ** 2))
+                loss = -log_p + reg
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                self.show_progress()
+                total_F -= loss.item()
+                count += 1
+            tqdm.write(f'F = {total_F/count}')
+
 
         log.info("done optimizing.")
 

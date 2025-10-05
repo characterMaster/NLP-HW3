@@ -137,7 +137,7 @@ With backoff, samples collapse to frequent conversational frames (“right…”
 
 
 ## Q7:
-
+python code/train_lm.py vocab-genspam.txt log_linear data/gen_spam/train/gen --output log_linear_gen.model --lexicon lexicons/words-10.txt --l2_regularization 1 --epochs 0 --device cuda
 
 ## Q8:
 Given an utterance $u$ and $K$ candidate transcripts $\{\tilde{w}_1,\dots,\tilde{w}_K\}$,
