@@ -59,11 +59,11 @@ def next_token_distribution(lm, vocab_list, prev2, prev1):
         p = None
         if hasattr(lm, "prob"):
             try:
-                p = lm.prob((prev2, prev1, w))
+                p = lm.prob(prev2, prev1, w)
             except TypeError:
                 p = lm.prob(prev2, prev1, w)
         if p is None and hasattr(lm, "log_prob"):
-            lp = lm.log_prob((prev2, prev1, w))
+            lp = lm.log_prob(prev2, prev1, w)
             p = 0.0 if not math.isfinite(lp) else 2.0 ** lp
         if p is None and hasattr(lm, "cond_prob"):
             p = lm.cond_prob(prev2, prev1, w)
