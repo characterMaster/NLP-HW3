@@ -32,6 +32,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--device", type=str, default="cpu",
                    choices=["cpu", "cuda", "mps"],
                    help="device for PyTorch tensors")
+    p.add_argument("--metrics", action="store_true",
+                   help="print dev metrics (E.1 style); OFF by default for grading")
     # verbosity
     p.set_defaults(logging_level=logging.INFO)
     g = p.add_mutually_exclusive_group()
@@ -189,12 +191,12 @@ def main():
 
     gen_pct  = 100.0 * gen_count  / total
     spam_pct = 100.0 * spam_count / total
-    print(f"{gen_count} files were more probably from {gen_name} ({gen_pct:.2f}%)")
-    print(f"{spam_count} files were more probably from {spam_name} ({spam_pct:.2f}%)")
-    print(f"Genuine: in total {true_gen_count} files")
-    print(f"Spam: in total {true_spam_count} files")
+    # print(f"{gen_count} files were more probably from {gen_name} ({gen_pct:.2f}%)")
+    # print(f"{spam_count} files were more probably from {spam_name} ({spam_pct:.2f}%)")
+    # print(f"Genuine: in total {true_gen_count} files")
+    # print(f"Spam: in total {true_spam_count} files")
 
-    if e1_count > 0:
+    if args.metrics and e1_count > 0:
         ee = expected_error_sum / e1_count
         ll = logloss_sum / e1_count
         err_rate = zero_one_errors / e1_count

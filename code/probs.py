@@ -620,68 +620,103 @@ class ImprovedLogLinearLanguageModel(LanguageModel, nn.Module):
         # you can write J @ K as shorthand for torch.mul(J, K).
         # J @ K looks more like the usual math notation.
         oov_idx = self.vocab.index("OOV")
-        x_vec = self.E[:, self.vocab.index(x) if x in self.vocab else oov_idx]
-        y_vec = self.E[:, self.vocab.index(y) if y in self.vocab else oov_idx]
-        
-        # oov feature
-        oov_f = x_vec @ self.x_oov + y_vec @ self.y_oov if oov_idx else 0
-        
-        
-        h = self.X.T @ x_vec + self.Y.T @ y_vec
-        logits = h @ self.E + oov_f # shape [|V|]
+        if isinstance(x, str):
+            x_vec = self.E[:, self.vocab.index(x) if x in self.vocab else oov_idx]
+            y_vec = self.E[:, self.vocab.index(y) if y in self.vocab else oov_idx]
+            # [d] 向量
+            h = self.X.T @ x_vec + self.Y.T @ y_vec
+            logits = h @ self.E  # [|V|]
+            return logits
+
+        # 否则是 batch: [B]
+        x_vecs = self.E[:, x]   # [d, B]
+        y_vecs = self.E[:, y]   # [d, B]
+        h = self.X.T @ x_vecs + self.Y.T @ y_vecs  # [d, B]
+        logits = (h.T @ self.E).contiguous()  # [B, |V|]
         return logits
 
+    def log_prob(self, x: Wordtype, y: Wordtype, z: Wordtype) -> float:
+        """Return log p(z | xy) according to this language model."""
+        # https://pytorch.org/docs/stable/generated/torch.Tensor.item.html
+        return self.log_prob_tensor(x, y, z).item()
+
+    @typechecked
     def log_prob_tensor(self, x: Wordtype, y: Wordtype, z: Wordtype) -> TorchScalar:
+        """Return the same value as log_prob, but stored as a tensor."""
+        
         logits = self.logits(x,y)
         log_probs = torch.log_softmax(logits, dim=-1)
         idx = self.vocab.index(z) if z in self.vocab else self.vocab.index("OOV")
-        # The return type, TorchScalar, represents a torch.Tensor scalar.
-        # See Question 7 in INSTRUCTIONS.md for more info about fine-grained 
-        # type annotations for Tensors.
-        return log_probs[idx]
+        if isinstance(z, str):
+            idx = self.vocab.index(z) if z in self.vocab else self.vocab.index("OOV")
+            return log_probs[idx]
+        else:
+            return log_probs[torch.arange(len(z)), z]
 
     def train(self, file: Path):    # type: ignore
-        
-        ### Technically this method shouldn't be called `train`,
-        ### because this means it overrides not only `LanguageModel.train` (as desired)
-        ### but also `nn.Module.train` (which has a different type). 
-        ### However, we won't be trying to use the latter method.
-        ### The `type: ignore` comment above tells the type checker to ignore this inconsistency.
-        
-        # Optimization hyperparameters.
-        eta0 = 1e-5  # 1e-2 ID 1e-5 gen# initial learning rate
+        import itertools
 
-        # This is why we needed the nn.Parameter above.
-        # The optimizer needs to know the list of parameters
-        # it should be trying to update.
+        # Optimization hyperparameters
+        eta0 = 1e-4  # 
+        batch_size = 32
+        patience = 3
+        scheduler_step, scheduler_gamma = 3, 0.7
+
         optimizer = optim.Adam(self.parameters(), lr=eta0)
-
-        # Initialize the parameter matrices to be full of zeros.
-        best_dev_loss = float('inf')
-        no_improve_epochs = 0
-        batch_size = 16
-        N = num_tokens(file)
-        trigrams = list(read_trigrams(file, self.vocab))
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
         best_loss = float("inf")
-        patience, wait = 3, 0  # early stopping
-        log.info("Start optimizing on {N} training tokens...")
-        
+        wait = 0
+
+        trigrams = list(read_trigrams(file, self.vocab))
+        N = len(trigrams)
+        log.info(f"Start optimizing on {N} training trigrams...")
+
+        # 每个 epoch 打乱顺序 (shuffle)
         for epoch in range(self.epochs):
             total_loss = 0.0
-            pbar = tqdm(trigrams, desc=f"Epoch {epoch+1}/{self.epochs}")
-            for (x, y, z) in pbar:
+            # 使用 draw_trigrams_forever 随机顺序 (一次取 N 个)
+            trigram_iter = itertools.islice(draw_trigrams_forever(file, self.vocab, randomize=True), N)
+            shuffled_trigrams = list(trigram_iter)
+
+            # 将 trigram 转为 index 向量（方便 mini-batch 向量化）
+            xs, ys, zs = [], [], []
+            for (x, y, z) in shuffled_trigrams:
+                xs.append(self.vocab.index(x) if x in self.vocab else self.vocab.index("OOV"))
+                ys.append(self.vocab.index(y) if y in self.vocab else self.vocab.index("OOV"))
+                zs.append(self.vocab.index(z) if z in self.vocab else self.vocab.index("OOV"))
+            xs, ys, zs = torch.tensor(xs), torch.tensor(ys), torch.tensor(zs)
+
+            # 分 batch
+            num_batches = (N + batch_size - 1) // batch_size
+            for b in tqdm(range(num_batches), desc=f"Epoch {epoch+1}/{self.epochs}"):
+                start, end = b * batch_size, min((b + 1) * batch_size, N)
+                xb, yb, zb = xs[start:end], ys[start:end], zs[start:end]
+
+                # 向量化取词向量
+                x_vecs = self.E[:, xb]  # [dim, B]
+                y_vecs = self.E[:, yb]  # [dim, B]
+                h = self.X.T @ x_vecs + self.Y.T @ y_vecs  # [dim, B]
+                logits = h.T @ self.E  # [B, |V|]
+
+                # log_softmax 并计算 batch 内平均损失
+                log_probs = torch.log_softmax(logits, dim=-1)
+                loss = -log_probs[torch.arange(len(zb)), zb].mean()
+
+                # 正则项 (L2)
+                reg = self.l2 * (torch.sum(self.X ** 2) + torch.sum(self.Y ** 2))
+                total_loss_batch = loss + reg
+
                 optimizer.zero_grad()
-                loss = -self.log_prob_tensor(x, y, z)
-                loss.backward()
+                total_loss_batch.backward()
                 torch.nn.utils.clip_grad_norm_(self.parameters(), 1.0)
                 optimizer.step()
-                total_loss += loss.item()
+
+                total_loss += total_loss_batch.item() * len(zb)
+
+            avg_loss = total_loss / N
             scheduler.step()
 
-            avg_loss = total_loss / len(trigrams)
-            print(f"Epoch {epoch+1}: F = {avg_loss:.6f}")
-
+            print(f"Epoch {epoch+1}: avg_loss = {avg_loss:.6f}")
             if avg_loss < best_loss - 1e-4:
                 best_loss = avg_loss
                 wait = 0
@@ -690,7 +725,5 @@ class ImprovedLogLinearLanguageModel(LanguageModel, nn.Module):
                 if wait >= patience:
                     print("Early stopping triggered.")
                     break
-
-
 
         log.info("done optimizing.")

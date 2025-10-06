@@ -153,9 +153,9 @@ With backoff, samples collapse to frequent conversational frames (“right”, �
 
 
 (2) When d=10. varying C almost does not impact the result of corss-entropy, neither error rate. This is because the embedding dimension is too small (not much feature types) for model to overfit the data. Normally, model easily underfit the data, and adding regularization in this circumstance does not make different, since it is meant to punish overfit situation.
-(3) For add-lambda model, we have cross-entropy of 10.452 and error rate of 0.2522. While for log-linear model, when d is small (d=10), the cross-entropy is higher than add-lambda model's due to that the log-linear model underfits the data. The features amount is too small. However, when d becomes larger, we can see from the table that the cross entropy of log-linear model decreases significantly, much lower than add-lambda model, which indicate that the amount of features is enough for model to capture important information and represent the data.   
+(3) For add-lambda model, we have cross-entropy of 10.452 and error rate of 0.2522. While for log-linear model, when d is small (d=10), the cross-entropy is higher than add-lambda model's due to that the log-linear model underfits the data. The features are represented with too little embeddings. However, when d becomes larger, we can see from the table that the cross entropy of log-linear model decreases significantly, much lower than add-lambda model, which indicate that the features are representative enough for model to capture important information. 
 
-2. Adjusting p(gen) with larger value means shifting the decision boundary to classify more samples to genuine
+1. Adjusting p(gen) with larger value means shifting the decision boundary to classify more samples to genuine
 
 3.
 
