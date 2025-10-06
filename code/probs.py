@@ -457,7 +457,7 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         ### The `type: ignore` comment above tells the type checker to ignore this inconsistency.
         
         # Optimization hyperparameters.
-        eta0 = 0.01  # initial learning rate
+        eta0 = 1e-5  # 1e-2 ID 1e-5 gen# initial learning rate
 
         # This is why we needed the nn.Parameter above.
         # The optimizer needs to know the list of parameters
@@ -549,7 +549,7 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         # each parameter were changed slightly.
 
 
-class ImprovedLogLinearLanguageModel(EmbeddingLogLinearLanguageModel):
+class ImprovedLogLinearLanguageModel(LanguageModel, nn.Module):
     # TODO: IMPLEMENT ME!
     
     # This is where you get to come up with some features of your own, as
@@ -576,4 +576,120 @@ class ImprovedLogLinearLanguageModel(EmbeddingLogLinearLanguageModel):
     # * You could use a different optimization algorithm instead of SGD, such
     #   as `torch.optim.Adam` (https://pytorch.org/docs/stable/optim.html).
     #
-    pass
+    def __init__(self, vocab: Vocab, lexicon_file: Path, l2: float, epochs: int) -> None:
+        super().__init__(vocab)
+        if l2 < 0:
+            raise ValueError("Negative regularization strength {l2}")
+        self.l2: float = l2
+
+        lexicon ={}
+        self.dim: int = int(str(lexicon_file).split('-')[-1].replace('.txt',''))  # TODO: SET THIS TO THE DIMENSIONALITY OF THE VECTORS
+        
+        with open(lexicon_file, "r") as f:
+            for line in f:
+                parts = line.split()
+                word = parts[0]
+                vec = torch.tensor([float(x) for x in parts[1:]])
+                lexicon[word] = vec
+        self.lexicon = lexicon
+        self.E = torch.stack([lexicon[w] if w in lexicon else lexicon['OOL'] for w in vocab], dim=1)
+        
+
+        self.X = nn.Parameter(torch.zeros((self.dim, self.dim)), requires_grad=True)
+        self.Y = nn.Parameter(torch.zeros((self.dim, self.dim)), requires_grad=True)
+        nn.init.xavier_uniform_(self.X)
+        nn.init.xavier_uniform_(self.Y)
+        # OOV feature
+        self.x_oov = nn.Parameter(torch.zeros(self.dim))
+        self.y_oov = nn.Parameter(torch.zeros(self.dim))
+        self.beta = nn.Parameter(torch.tensor(0.1))
+        
+        self.epochs = epochs
+    def logits(self, x: Wordtype, y: Wordtype) -> Float[torch.Tensor,"vocab"]:
+        """Return a vector of the logs of the unnormalized probabilities f(xyz) * θ 
+        for the various types z in the vocabulary.
+        These are commonly known as "logits" or "log-odds": the values that you 
+        exponentiate and renormalize in order to get a probability distribution."""
+        # TODO: IMPLEMENT ME!
+        # Don't forget that you can create additional methods
+        # that you think are useful, if you'd like.
+        # It's cleaner than making this function massive.
+        #
+        # The operator `@` is a nice way to write matrix multiplication:
+        # you can write J @ K as shorthand for torch.mul(J, K).
+        # J @ K looks more like the usual math notation.
+        oov_idx = self.vocab.index("OOV")
+        x_vec = self.E[:, self.vocab.index(x) if x in self.vocab else oov_idx]
+        y_vec = self.E[:, self.vocab.index(y) if y in self.vocab else oov_idx]
+        
+        # oov feature
+        oov_f = x_vec @ self.x_oov + y_vec @ self.y_oov if oov_idx else 0
+        
+        
+        h = self.X.T @ x_vec + self.Y.T @ y_vec
+        logits = h @ self.E + oov_f # shape [|V|]
+        return logits
+
+    def log_prob_tensor(self, x: Wordtype, y: Wordtype, z: Wordtype) -> TorchScalar:
+        logits = self.logits(x,y)
+        log_probs = torch.log_softmax(logits, dim=-1)
+        idx = self.vocab.index(z) if z in self.vocab else self.vocab.index("OOV")
+        # The return type, TorchScalar, represents a torch.Tensor scalar.
+        # See Question 7 in INSTRUCTIONS.md for more info about fine-grained 
+        # type annotations for Tensors.
+        return log_probs[idx]
+
+    def train(self, file: Path):    # type: ignore
+        
+        ### Technically this method shouldn't be called `train`,
+        ### because this means it overrides not only `LanguageModel.train` (as desired)
+        ### but also `nn.Module.train` (which has a different type). 
+        ### However, we won't be trying to use the latter method.
+        ### The `type: ignore` comment above tells the type checker to ignore this inconsistency.
+        
+        # Optimization hyperparameters.
+        eta0 = 1e-5  # 1e-2 ID 1e-5 gen# initial learning rate
+
+        # This is why we needed the nn.Parameter above.
+        # The optimizer needs to know the list of parameters
+        # it should be trying to update.
+        optimizer = optim.Adam(self.parameters(), lr=eta0)
+
+        # Initialize the parameter matrices to be full of zeros.
+        best_dev_loss = float('inf')
+        no_improve_epochs = 0
+        batch_size = 16
+        N = num_tokens(file)
+        trigrams = list(read_trigrams(file, self.vocab))
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
+        best_loss = float("inf")
+        patience, wait = 3, 0  # early stopping
+        log.info("Start optimizing on {N} training tokens...")
+        
+        for epoch in range(self.epochs):
+            total_loss = 0.0
+            pbar = tqdm(trigrams, desc=f"Epoch {epoch+1}/{self.epochs}")
+            for (x, y, z) in pbar:
+                optimizer.zero_grad()
+                loss = -self.log_prob_tensor(x, y, z)
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.parameters(), 1.0)
+                optimizer.step()
+                total_loss += loss.item()
+            scheduler.step()
+
+            avg_loss = total_loss / len(trigrams)
+            print(f"Epoch {epoch+1}: F = {avg_loss:.6f}")
+
+            if avg_loss < best_loss - 1e-4:
+                best_loss = avg_loss
+                wait = 0
+            else:
+                wait += 1
+                if wait >= patience:
+                    print("Early stopping triggered.")
+                    break
+
+
+
+        log.info("done optimizing.")
