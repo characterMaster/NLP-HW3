@@ -13,7 +13,7 @@ Output (match assignment format):
     0.037   easy034
     0.057   OVERALL
 """
-
+from glob import glob
 import argparse
 from pathlib import Path
 import math
@@ -81,7 +81,16 @@ def main():
     total_ref_words = 0.0
     total_err_words = 0.0
 
-    for utt in args.utt_files:
+    utt_list = []
+    for p in args.utt_files:
+        s = str(p)
+        if any(ch in s for ch in "*?[]"):
+            utt_list.extend(Path(x) for x in glob(s))
+        else:
+            utt_list.append(Path(s))
+    
+
+    for utt in utt_list:
         lines = utt.read_text(encoding="utf-8").splitlines()
         if len(lines) < 10:
             print(f"WARNING: {utt} has fewer than 10 lines; skipping.", file=sys.stderr)

@@ -167,6 +167,23 @@ $$\mathrm{score}(\tilde{w})
 
 and select the candidate with the largest score.
 
+## Q9:
+Use swsmall_add0.1.model
+0.083   easy021
+0.250   easy031
+0.500   easy041
+0.143   easy051
+0.071   easy060
+0.170   OVERALL
+
+Use swsmall_backoff_add0.1.model
+0.167   easy021
+0.250   easy031
+0.833   easy041
+0.143   easy051
+0.143   easy060
+0.255   OVERALL
+
 ## Q10:
 1) Model (Word LM + Char LM mixture)
 
