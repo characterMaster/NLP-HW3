@@ -198,6 +198,13 @@ Use swsmall_add0.1.model
 0.071   easy060
 0.170   OVERALL
 
+0.400   speech021
+0.667   speech031
+0.000   speech041
+0.000   speech051
+0.500   speech060
+0.476   OVERALL
+
 Use swsmall_backoff_add0.1.model
 0.167   easy021
 0.250   easy031
@@ -205,6 +212,16 @@ Use swsmall_backoff_add0.1.model
 0.143   easy051
 0.143   easy060
 0.255   OVERALL
+
+0.400   speech021
+0.667   speech031
+0.000   speech041
+0.000   speech051
+0.500   speech060
+0.476   OVERALL
+
+Obviously, model with only add lambda(0.1) is better. The micro-avg over dev splits favors add-λ, and backoff doesn’t help with this small training set (likely over-discounting rare trigrams on short utterances).
+A fair selection uses only development data to choose smoothing (no peeking at test). It’s also unfair to use the reference line (first row) or the WER column when choosing a candidate—only AM log-prob (col 2) + LM score should be used.
 
 ## Q10:
 1) Model (Word LM + Char LM mixture)
