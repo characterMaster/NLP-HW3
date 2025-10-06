@@ -149,15 +149,26 @@ With backoff, samples collapse to frequent conversational frames (“right”, �
 | C=1,d=10 |    11.11603          | 0.1950    | 4.2611 | 0.2000|
 | C=5,d=10 |     11.11608        |    0.1950    | 4.2610  | 0.1963 |
 | C=0.1,d=50 |    9.9538        |    0.1544    | 4.6077  | 0.1556 |
-| C=5,d=200 |       8.4790      |    0.0881    | 2.8393  | 0.0889 |
+| C=0.1,d=200 |       8.4790      |    0.0881    | 2.8393  | 0.0889 |
 
 
 (2) When d=10. varying C almost does not impact the result of corss-entropy, neither error rate. This is because the embedding dimension is too small (not much feature types) for model to overfit the data. Normally, model easily underfit the data, and adding regularization in this circumstance does not make different, since it is meant to punish overfit situation.
 (3) For add-lambda model, we have cross-entropy of 10.452 and error rate of 0.2522. While for log-linear model, when d is small (d=10), the cross-entropy is higher than add-lambda model's due to that the log-linear model underfits the data. The features are represented with too little embeddings. However, when d becomes larger, we can see from the table that the cross entropy of log-linear model decreases significantly, much lower than add-lambda model, which indicate that the features are representative enough for model to capture important information. 
 
-1. Adjusting p(gen) with larger value means shifting the decision boundary to classify more samples to genuine
+2. Adjusting p(gen) with larger value means shifting the decision boundary to classify more samples to genuine
 
-3.
+
+| p(gen) | expected error rate | average log-loss(bits/doc) | actual error rate| 
+|------------|------------------:|------------------:|------------------:|
+| 0.4| 0.0860 | 2.8412 |0.0852| 
+| 0.5| 0.0866 | 2.8397 |0.0852| 
+| 0.6| 0.0873 | 2.8390 |0.0852| 
+| 0.65| 0.0877 | 2.8390 |0.0889| 
+| 0.7|    0.0881    | 2.8393  | 0.0889 |
+| 0.8|    0.0891    | 2.8411  | 0.0926 |
+
+3. The training set was used to optimize model parameters. The development set was used to tune hyperparameters such as C and embedding dimension, since evaluating on unseen dev data indicates generalization performance. The test set was used only once at the end to report final results, ensuring an unbiased estimate of model quality.
+
 
 (d)
 

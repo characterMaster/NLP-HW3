@@ -332,7 +332,7 @@ class BackoffAddLambdaLanguageModel(AddLambdaLanguageModel):
             return 1 / self.vocab_size 
         
         def unigram(z):
-            return (self.event_count[z,] + self.lambda_* uniform()) / (total_tokens + self.lambda_ * self.vocab_size)
+            return (self.event_count[(z,)] + self.lambda_* uniform()) / (total_tokens + self.lambda_ * self.vocab_size)
         
         # bigram probability, backing off to unigram
         def bigram(y, z):
@@ -458,7 +458,7 @@ class EmbeddingLogLinearLanguageModel(LanguageModel, nn.Module):
         ### The `type: ignore` comment above tells the type checker to ignore this inconsistency.
         
         # Optimization hyperparameters.
-        eta0 = 1e-5  # 1e-2 ID 1e-5 gen# initial learning rate
+        eta0 = 1e-2# 1e-5  # 1e-2 ID 1e-5 gen# initial learning rate
 
         # This is why we needed the nn.Parameter above.
         # The optimizer needs to know the list of parameters
@@ -583,8 +583,9 @@ class ImprovedLogLinearLanguageModel(LanguageModel, nn.Module):
             raise ValueError("Negative regularization strength {l2}")
         self.l2: float = l2
 
-        lexicon ={}
-        self.dim: int = int(str(lexicon_file).split('-')[-1].replace('.txt',''))  # TODO: SET THIS TO THE DIMENSIONALITY OF THE VECTORS
+        lexicon = {}
+        match = re.search(r"(\d+)", str(lexicon_file))
+        self.dim = int(match.group(1))   # TODO: SET THIS TO THE DIMENSIONALITY OF THE VECTORS
         
         with open(lexicon_file, "r") as f:
             for line in f:
@@ -604,6 +605,9 @@ class ImprovedLogLinearLanguageModel(LanguageModel, nn.Module):
         self.x_oov = nn.Parameter(torch.zeros(self.dim))
         self.y_oov = nn.Parameter(torch.zeros(self.dim))
         self.beta = nn.Parameter(torch.tensor(0.1))
+        # Unigram
+        self.unigram_counts = None  # filled in during training
+        self.beta = nn.Parameter(torch.tensor(0.3))
         
         self.epochs = epochs
     def logits(self, x: Wordtype, y: Wordtype) -> Float[torch.Tensor,"vocab"]:
@@ -623,16 +627,30 @@ class ImprovedLogLinearLanguageModel(LanguageModel, nn.Module):
         if isinstance(x, str):
             x_vec = self.E[:, self.vocab.index(x) if x in self.vocab else oov_idx]
             y_vec = self.E[:, self.vocab.index(y) if y in self.vocab else oov_idx]
-            # [d] 向量
+            # [d] vector
             h = self.X.T @ x_vec + self.Y.T @ y_vec
-            logits = h @ self.E  # [|V|]
+            oov_boost = (x_vec @ self.x_oov + y_vec @ self.y_oov)
+            logits = h @ self.E + oov_boost # [|V|]
+            
+            if self.unigram_counts is not None:
+                unigram_f = torch.log(self.unigram_counts + 1.0)
+                logits += self.beta * unigram_f
+            
             return logits
 
-        # 否则是 batch: [B]
+        # batch: [B]
         x_vecs = self.E[:, x]   # [d, B]
         y_vecs = self.E[:, y]   # [d, B]
         h = self.X.T @ x_vecs + self.Y.T @ y_vecs  # [d, B]
         logits = (h.T @ self.E).contiguous()  # [B, |V|]
+        
+        # add oov boost
+        oov_boost = (x_vecs.T @ self.x_oov + y_vecs.T @ self.y_oov).unsqueeze(1)  # [B,1]
+        logits[:, oov_idx:oov_idx+1] += oov_boost
+        # uni
+        if self.unigram_counts is not None:
+            unigram_f = torch.log(self.unigram_counts + 1.0)
+            logits += self.beta * unigram_f
         return logits
 
     def log_prob(self, x: Wordtype, y: Wordtype, z: Wordtype) -> float:
@@ -653,70 +671,69 @@ class ImprovedLogLinearLanguageModel(LanguageModel, nn.Module):
         else:
             return log_probs[torch.arange(len(z)), z]
 
-    def train(self, file: Path):    # type: ignore
-        import itertools
+    def train(self, file: Path):  # type: ignore
+        eta0 = 1e-2
+        optimizer = optim.Adam(self.parameters(), lr=eta0, weight_decay=self.l2)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.7)
 
-        # Optimization hyperparameters
-        eta0 = 1e-4  # 
+        # ---- Build unigram counts ----
+        from collections import Counter
+        counter = Counter()
+        for (_, _, z) in read_trigrams(file, self.vocab):
+            counter[z] += 1
+        counts = torch.tensor([counter[w] for w in self.vocab], dtype=torch.float32)
+        self.unigram_counts = counts / counts.sum()
+
+        # ---- Get infinite shuffled trigram stream ----
+        trigram_iter = draw_trigrams_forever(file, self.vocab, randomize=True)
+        N = num_tokens(file)
         batch_size = 32
-        patience = 3
-        scheduler_step, scheduler_gamma = 3, 0.7
-
-        optimizer = optim.Adam(self.parameters(), lr=eta0)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
+        patience, wait = 2, 0
         best_loss = float("inf")
-        wait = 0
 
-        trigrams = list(read_trigrams(file, self.vocab))
-        N = len(trigrams)
-        log.info(f"Start optimizing on {N} training trigrams...")
+        print(f"Training with shuffled data, dim={self.dim}, {self.epochs} epochs")
 
-        # 每个 epoch 打乱顺序 (shuffle)
         for epoch in range(self.epochs):
             total_loss = 0.0
-            # 使用 draw_trigrams_forever 随机顺序 (一次取 N 个)
-            trigram_iter = itertools.islice(draw_trigrams_forever(file, self.vocab, randomize=True), N)
-            shuffled_trigrams = list(trigram_iter)
+            batch = []
+            pbar = tqdm(range(N), desc=f"Epoch {epoch+1}/{self.epochs}")
+            for _ in pbar:
+                trigram = next(trigram_iter)
+                batch.append(trigram)
 
-            # 将 trigram 转为 index 向量（方便 mini-batch 向量化）
-            xs, ys, zs = [], [], []
-            for (x, y, z) in shuffled_trigrams:
-                xs.append(self.vocab.index(x) if x in self.vocab else self.vocab.index("OOV"))
-                ys.append(self.vocab.index(y) if y in self.vocab else self.vocab.index("OOV"))
-                zs.append(self.vocab.index(z) if z in self.vocab else self.vocab.index("OOV"))
-            xs, ys, zs = torch.tensor(xs), torch.tensor(ys), torch.tensor(zs)
+                if len(batch) == batch_size:
+                    # --- Prepare tensors ---
+                    oov_idx = self.vocab.index("OOV")
+                    x_ids, y_ids, z_ids = [], [], []
+                    for (x, y, z) in batch:
+                        x_ids.append(self.vocab.index(x) if x in self.vocab else oov_idx)
+                        y_ids.append(self.vocab.index(y) if y in self.vocab else oov_idx)
+                        z_ids.append(self.vocab.index(z) if z in self.vocab else oov_idx)
+                    xb = torch.tensor(x_ids)
+                    yb = torch.tensor(y_ids)
+                    zb = torch.tensor(z_ids)
 
-            # 分 batch
-            num_batches = (N + batch_size - 1) // batch_size
-            for b in tqdm(range(num_batches), desc=f"Epoch {epoch+1}/{self.epochs}"):
-                start, end = b * batch_size, min((b + 1) * batch_size, N)
-                xb, yb, zb = xs[start:end], ys[start:end], zs[start:end]
+                    # --- Compute loss ---
+                    optimizer.zero_grad()
+                    losses = []
+                    for i in range(len(batch)):
+                        losses.append(-self.log_prob_tensor(
+                            self.vocab[xb[i]], self.vocab[yb[i]], self.vocab[zb[i]]
+                        ))
+                    loss = torch.stack(losses).mean()
 
-                # 向量化取词向量
-                x_vecs = self.E[:, xb]  # [dim, B]
-                y_vecs = self.E[:, yb]  # [dim, B]
-                h = self.X.T @ x_vecs + self.Y.T @ y_vecs  # [dim, B]
-                logits = h.T @ self.E  # [B, |V|]
+                    # --- Backprop ---
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.parameters(), 1.0)
+                    optimizer.step()
+                    total_loss += loss.item()
+                    batch = []  # reset
 
-                # log_softmax 并计算 batch 内平均损失
-                log_probs = torch.log_softmax(logits, dim=-1)
-                loss = -log_probs[torch.arange(len(zb)), zb].mean()
-
-                # 正则项 (L2)
-                reg = self.l2 * (torch.sum(self.X ** 2) + torch.sum(self.Y ** 2))
-                total_loss_batch = loss + reg
-
-                optimizer.zero_grad()
-                total_loss_batch.backward()
-                torch.nn.utils.clip_grad_norm_(self.parameters(), 1.0)
-                optimizer.step()
-
-                total_loss += total_loss_batch.item() * len(zb)
-
-            avg_loss = total_loss / N
             scheduler.step()
+            avg_loss = total_loss / (N / batch_size)
+            print(f"Epoch {epoch+1}: F = {avg_loss:.6f}")
 
-            print(f"Epoch {epoch+1}: avg_loss = {avg_loss:.6f}")
+            # ---- Early stopping ----
             if avg_loss < best_loss - 1e-4:
                 best_loss = avg_loss
                 wait = 0
@@ -726,4 +743,4 @@ class ImprovedLogLinearLanguageModel(LanguageModel, nn.Module):
                     print("Early stopping triggered.")
                     break
 
-        log.info("done optimizing.")
+        print("Finished training with shuffled mini-batch SGD.")
