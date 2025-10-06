@@ -196,15 +196,15 @@ def main():
     # print(f"Genuine: in total {true_gen_count} files")
     # print(f"Spam: in total {true_spam_count} files")
 
-    if args.metrics and e1_count > 0:
-        ee = expected_error_sum / e1_count
-        ll = logloss_sum / e1_count
-        err_rate = zero_one_errors / e1_count
-        print(f"Expected error rate on dev files: {ee:.4f} ({e1_count} files)")
-        print(f"Average log-loss on dev files: {ll:.4f} bits per doc ({e1_count} files)")
-        print(f"Actual 0/1 error rate on dev files: {err_rate:.4f} ({e1_count} files)")
+    # if args.metrics and e1_count > 0:
+    #     ee = expected_error_sum / e1_count
+    #     ll = logloss_sum / e1_count
+    #     err_rate = zero_one_errors / e1_count
+    #     print(f"Expected error rate on dev files: {ee:.4f} ({e1_count} files)")
+    #     print(f"Average log-loss on dev files: {ll:.4f} bits per doc ({e1_count} files)")
+    #     print(f"Actual 0/1 error rate on dev files: {err_rate:.4f} ({e1_count} files)")
 
-        # Q3 (c)
-        print(f"Minimum prior P(gen) to classify ALL dev as spam = {pi_star:.4f}")
+    #     # Q3 (c)
+    #     print(f"Minimum prior P(gen) to classify ALL dev as spam = {pi_star:.4f}")
 if __name__ == "__main__":
     main()
