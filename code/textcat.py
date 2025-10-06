@@ -191,10 +191,10 @@ def main():
 
     gen_pct  = 100.0 * gen_count  / total
     spam_pct = 100.0 * spam_count / total
-    print(f"{gen_count} files were more probably from {gen_name} ({gen_pct:.2f}%)")
-    print(f"{spam_count} files were more probably from {spam_name} ({spam_pct:.2f}%)")
-    print(f"Genuine: in total {true_gen_count} files")
-    print(f"Spam: in total {true_spam_count} files")
+    # print(f"{gen_count} files were more probably from {gen_name} ({gen_pct:.2f}%)")
+    # print(f"{spam_count} files were more probably from {spam_name} ({spam_pct:.2f}%)")
+    # print(f"Genuine: in total {true_gen_count} files")
+    # print(f"Spam: in total {true_spam_count} files")
 
     # if args.metrics and e1_count > 0:
     ee = expected_error_sum / e1_count
