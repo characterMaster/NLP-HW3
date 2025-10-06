@@ -107,6 +107,8 @@ Since it is unknown whether $\hat{p}(z|y)=\hat{p}(z'|y)$, the answer is still no
 
 (d) When $\lambda$ increases, the ratio of the backed-off version model, (n-1)-gram, will become more weighted. Since model with less context (n gets smaller) could have larger possibilities for words, which introduces more smoothing, resulting in less variance and higher bias. Model tends to underfit the current corpus but to have a more stable result.  
 
+## Q5:
+According to experiments, backoff can fall back to lower-order n-grams when trigrams are sparse, reducing zero probabilities and variances. It is usually more stable and has a lower perplexity than pure add-$\lambda$, especially when the training data is small.
 
 ## Q6:
 INFO: model=swsmall_backoff_add0.1.model  num=10  max_length=20
