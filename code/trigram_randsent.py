@@ -93,15 +93,17 @@ def sample_one(lm, vocab_list, max_length=50):
     seq = [start_token, start_token]
 
     # Trigram sampling from the 3rd token
+    end_flag = False
     while len(seq) < max_length+2:
         w2, w1 = seq[-2], seq[-1]
         probs = renorm(next_token_distribution(lm, vocab_list, w2, w1))
         nxt = sample_from_dist(vocab_list, probs)
         if nxt == end_token:
+            end_flag = True
             break
         seq.append(nxt)
     seq = seq[2:]
-    if seq[-1] not in ENDERS_CANDIDATES:
+    if not end_flag:
         return " ".join(seq)+' ...'
     return " ".join(seq)
 
@@ -120,7 +122,7 @@ def main():
     lm = torch.load(args.model, map_location="cpu")
     vocab_list = extract_vocab_tokens(lm)
     if "UNK" not in vocab_list:
-        vocab_list.append("UNK")
+        vocab_list.append("OOV")
     print(f"INFO: model={args.model.name}  num={args.num}  max_length={args.max_length}")
     for i in range(1, args.num + 1):
         s = sample_one(lm, vocab_list, max_length=args.max_length)

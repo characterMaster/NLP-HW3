@@ -110,20 +110,20 @@ Since it is unknown whether $\hat{p}(z|y)=\hat{p}(z'|y)$, the answer is still no
 
 ## Q6:
 INFO: model=swsmall_backoff_add0.1.model  num=10  max_length=20
-01: right ...
-02: and it's not it's just like you know incineration place they just something i spent every one check a problem ...
-03: but who his what ...
-04: and then ...
-05: oh yeah ...
-06: and but i like eating any difference there like in plano ...
-07: right ...
-08: what they're really good experience and you know how you ...
-09: i mean fifty thousand people who are are burning up a very quickly ...
-10: oh yeah ...
+01: right
+02: and it's not it's just like you know incineration place they just something i spent every one check a problem
+03: but who his what
+04: and then
+05: oh yeah
+06: and but i like eating any difference there like in plano
+07: right
+08: what they're really good experience and you know how you
+09: i mean fifty thousand people who are are burning up a very quickly
+10: oh yeah
 
 INFO: model=swsmall_add0.1.model  num=10  max_length=20
 01: well it's ann form readily tend handy dress experienced particles choosing p discovered took face we've pennsylvania floor seeds uncle ...
-02: yeah ...
+02: yeah
 03: and they're church every appealing classes choices runs department package he's sesame g decision none automatically due our grandmothers fly ...
 04: uh i terrible household wise case discovered ways expense served speech hole stand frying tailored do losing rest but down ...
 05: uh_huh cornstarch lobby sad move tablespoons county skid relationships manager cup elaborate laws gone buy se floor united thrown popular ...
@@ -133,11 +133,33 @@ INFO: model=swsmall_add0.1.model  num=10  max_length=20
 09: do opened neighbors advertising ground overnight sales adding purchases half kitchenette nuts appreciate bag august opinion crust lower contribute mall ...
 10: and i'm example thoroughly burning useful talks arthritis heart getting frozen year luck true celery hates enough consideration yeah human ...
 
-With backoff, samples collapse to frequent conversational frames (“right…”, “oh yeah…”, “and then…”) and end early—more conservative and fluent because unseen contexts fall back to lower-order estimates. Pure add-λ produces longer, content-heavy but rambling strings with odd word choices—more diverse, but noticeably less coherent.
+With backoff, samples collapse to frequent conversational frames (“right”, “oh yeah”, “and then”) and end early—more conservative and fluent because unseen contexts fall back to lower-order estimates. Pure add-λ produces longer, content-heavy but rambling strings with odd word choices—more diverse, but noticeably less coherent, and close to uniform sampling.
 
 
 ## Q7:
-python code/train_lm.py vocab-genspam.txt log_linear data/gen_spam/train/gen --output log_linear_gen.model --lexicon lexicons/words-10.txt --l2_regularization 1 --epochs 0 --device cuda
+(c)
+1.
+(1) After traverse every C with the smae d, the best C* could be either 0 or 0.1 since they result in the same cross entropy (11.11602). However, it's better to have C for the when d is enlarged. Therefore, the best C is C* = 0.1.
+(For computing the error-rate, we maintain p(gen)=0.7.)
+| (C,d) | cross-entropy(bits/token) | expected error rate | average log-loss(bits/doc) | actual error rate| 
+|------------|------------------:|------------:|-------------:|------:|
+| C=0,d=10 |      11.11602       |   0.1950     | 4.2611 | 0,2000|
+| C=0.1,d=10 |    11.11602       |   0.1950     | 4.2611 | 0.2000|
+| C=0.5,d=10 |      11.11603       |   0.1950      | 4.2611  | 0.2000|
+| C=1,d=10 |    11.11603          | 0.1950    | 4.2611 | 0.2000|
+| C=5,d=10 |     11.11608        |    0.1950    | 4.2610  | 0.1963 |
+| C=0.1,d=50 |    9.9538        |    0.1544    | 4.6077  | 0.1556 |
+| C=5,d=200 |       8.4790      |    0.0881    | 2.8393  | 0.0889 |
+
+
+(2) When d=10. varying C almost does not impact the result of corss-entropy, neither error rate. This is because the embedding dimension is too small (not much feature types) for model to overfit the data. Normally, model easily underfit the data, and adding regularization in this circumstance does not make different, since it is meant to punish overfit situation.
+(3) For add-lambda model, we have cross-entropy of 10.452 and error rate of 0.2522. While for log-linear model, when d is small (d=10), the cross-entropy is higher than add-lambda model's due to that the log-linear model underfits the data. The features amount is too small. However, when d becomes larger, we can see from the table that the cross entropy of log-linear model decreases significantly, much lower than add-lambda model, which indicate that the amount of features is enough for model to capture important information and represent the data.   
+
+2. Adjusting p(gen) with larger value means shifting the decision boundary to classify more samples to genuine
+
+3.
+
+(d)
 
 ## Q10:
 1) Model (Word LM + Char LM mixture)
